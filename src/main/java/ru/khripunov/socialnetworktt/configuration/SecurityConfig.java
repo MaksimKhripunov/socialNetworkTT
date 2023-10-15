@@ -8,19 +8,14 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,8 +26,12 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+
 import org.springframework.security.web.authentication.RememberMeServices;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -64,9 +63,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/register").permitAll()
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/activate/**").permitAll()
-                        .requestMatchers("/api/room/**").authenticated()
-                        .requestMatchers("/**").permitAll()
+                        .requestMatchers("/api/activate/**").permitAll()
+                        .requestMatchers(WebSocketConfig.SIMPLE_BROKER_DESTINATION+"/**").permitAll()
+                        .requestMatchers(WebSocketConfig.APP_DESTINATION_PREFIX+"/**").permitAll()
+                        .requestMatchers(WebSocketConfig.END_POINT+"/**").permitAll()
+                        .requestMatchers("/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
                 .exceptionHandling(customizer -> customizer
@@ -81,11 +82,30 @@ public class SecurityConfig {
 
         return chain;
     }
+    @Bean
+    public CorsFilter corsFilter() {
+        final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        final CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.addAllowedOrigin("*");
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("OPTIONS");
+        config.addAllowedMethod("HEAD");
+        config.addAllowedMethod("GET");
+        config.addAllowedMethod("PUT");
+        config.addAllowedMethod("POST");
+        config.addAllowedMethod("DELETE");
+        config.addAllowedMethod("PATCH");
+        source.registerCorsConfiguration("/**", config);
+        return new CorsFilter(source);
+    }
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring().requestMatchers("/v3/api-docs/**");
     }
+
+
 
     @Bean
     JwtDecoder jwtDecoder() {

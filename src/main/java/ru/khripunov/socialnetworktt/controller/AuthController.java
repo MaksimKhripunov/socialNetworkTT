@@ -1,11 +1,6 @@
 package ru.khripunov.socialnetworktt.controller;
 
-
-
-
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,10 +16,11 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -37,12 +33,9 @@ import ru.khripunov.socialnetworktt.dto.Login;
 import ru.khripunov.socialnetworktt.model.Person;
 import ru.khripunov.socialnetworktt.dto.Registration;
 import ru.khripunov.socialnetworktt.service.PeopleService;
-import ru.khripunov.socialnetworktt.util.JwtTokenUtils;
+import ru.khripunov.socialnetworktt.service.TokenService;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -51,32 +44,17 @@ import java.util.stream.Collectors;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @DependsOn("securityFilterChain")
-@Tag(name = "Authentication", description = "The Authentication API. Contains operations like change password, forgot password, login, logout, etc.")
+@Tag(name = "Authentication/Registration", description = "The Authentication/Registration API.")
 public class AuthController {
 
 
     private final PeopleService peopleService;
+    private final TokenService tokenService;
     private final RememberMeServices rememberMeServices;
-
-    private final JwtTokenUtils jwtTokenUtils;
 
     private final JwtEncoder encoder;
 
-    @GetMapping()
-    public List<Person> findAll(){
-        return peopleService.findAll();
-    }
-
-    @GetMapping("/room/{id}")
-    public Optional<Person> findById(@PathVariable Long id) {
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Optional<Person> person=peopleService.findById(id);
-        if(person.isPresent() && Objects.equals(person.get().getUsername(), user.getUsername()))
-            return peopleService.findById(id);
-        else
-            throw new RuntimeException("Kuda nahuiiiii!");
-    }
-
+    @Operation(summary = "Confirm Code", description = "Confirm code to registration.")
     @GetMapping("/activate/{code}")
     public ResponseEntity<?> activate(@PathVariable String code){
         if(peopleService.activatePerson(code)) {
@@ -85,6 +63,7 @@ public class AuthController {
         return new ResponseEntity<>("Invalid code", HttpStatus.BAD_REQUEST);
     }
 
+    @Operation(summary = "User Registration", description = "Registration the user.")
     @PostMapping( "/register")
     public ResponseEntity<?> addUser(@Valid @RequestBody Registration registration, BindingResult bindingResult){
         for(FieldError fieldError : bindingResult.getFieldErrors())
@@ -114,40 +93,46 @@ public class AuthController {
         try{
             request.login(login.getUsername(), login.getPwd());
         } catch (ServletException e) {
-            System.out.println("Ошибка");
             throw new RuntimeException("Invalid username/email or password");
         }
 
         Authentication auth=(Authentication) request.getUserPrincipal();
+
         User user=(User) auth.getPrincipal();
 
         Person person = (Person) peopleService.findUserByUsername(user.getUsername());
 
         person.setDeleteTime(null);
 
-        /*String token = jwtTokenUtils.generateToken(user);*/
+
+
         String token = generateToken(user);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set("X-AUTH-TOKEN", token);
+
+
         log.info("User {} logged in.", user.getUsername());
         rememberMeServices.loginSuccess(request, response, auth);
+
         return ResponseEntity.ok().headers(httpHeaders).contentType(MediaType.APPLICATION_JSON).body("{\"token\":\"" + token + "\"}");
-
-
-
-
 
     }
 
+    @Operation(summary = "User Logout", description = "Logout the user and make invalid JWT token.")
     @PostMapping("/logout")
-    public void logout(HttpServletRequest request) throws ServletException {
+    public ResponseEntity<?> logout(HttpServletRequest request, @AuthenticationPrincipal Jwt principal) throws ServletException {
+
+        if (principal!=null){
+            tokenService.save(principal.getTokenValue(), principal.getClaims().get("exp").toString());
+        }
         request.logout();
+
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     private String generateToken(UserDetails userDetails) {
         Instant now = Instant.now();
         long expiry = 36000L;
-        // @formatter:off
         String scope = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
@@ -158,7 +143,6 @@ public class AuthController {
                 .subject(userDetails.getUsername())
                 .claim("scope", scope)
                 .build();
-        // @formatter:on
         return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 

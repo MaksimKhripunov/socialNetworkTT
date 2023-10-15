@@ -3,14 +3,15 @@ package ru.khripunov.socialnetworktt.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.Set;
+import java.util.*;
+import java.util.List;
 
 @Entity
+@Data
 @Table(name = "users")
 public class Person implements UserDetails {
     @Id
@@ -36,56 +37,30 @@ public class Person implements UserDetails {
     private String email;
 
     @Column(name = "delete_time")
-    private Date deleteTime;
+    private Date deleteTime=null;
+
+    @Column(name = "message_only_friends")
+    private Boolean messageOnlyFriends=false;
+
+    @Column(name = "hide_friends_list")
+    private Boolean hideFriendsList=false;
 
 
-    public Person(){
-        this.deleteTime=null;
-    }
 
-    public Person(String pwd, String firstname, String lastname, String username, String email){
-        this.pwd=pwd;
-        this.firstname=firstname;
-        this.lastname=lastname;
-        this.email=email;
-        this.username=username;
-        this.deleteTime=null;
-    }
-
-
-    public Long getId() {
-        return id;
-    }
-
-
-    public String getFirstname() {
-        return firstname;
-    }
-
-    public void setFirstname(String firstname) {
-        this.firstname = firstname;
-    }
-
-    public String getLastname() {
-        return lastname;
-    }
-
-    public void setLastname(String lastname) {
-        this.lastname = lastname;
-    }
+    @ManyToMany
+    @JoinTable(name = "friends",
+            joinColumns = @JoinColumn(name = "person_id", referencedColumnName = "id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "friend_id", referencedColumnName = "id", nullable = false))
+    private List<Person> friends;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Set.of();
     }
 
-
+    @Override
     public String getPassword() {
         return pwd;
-    }
-
-    public String getUsername() {
-        return username;
     }
 
     @Override
@@ -108,35 +83,8 @@ public class Person implements UserDetails {
         return true;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-
-
-    public void setPassword(String pwd) {
-        this.pwd = pwd;
-    }
-
     @Override
     public String toString(){
         return "Person [id="+id+", firstname="+firstname+", lastname="+lastname+", username="+username+", password="+pwd+", email="+email+"]";
-    }
-
-
-    public Date getDeleteTime() {
-        return deleteTime;
-    }
-
-    public void setDeleteTime(Date deleteTime) {
-        this.deleteTime = deleteTime;
     }
 }

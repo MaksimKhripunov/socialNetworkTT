@@ -1,11 +1,8 @@
 package ru.khripunov.socialnetworktt.service;
 
 
-import jakarta.transaction.Transactional;
-
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,9 +11,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import ru.khripunov.socialnetworktt.dto.EditInfo;
 import ru.khripunov.socialnetworktt.dto.Registration;
 import ru.khripunov.socialnetworktt.repository.PersonRepository;
 import ru.khripunov.socialnetworktt.model.Person;
@@ -31,6 +31,7 @@ public class PeopleService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
 
+    private final JwtDecoder decoder;
     private Person personReg=null;
     private String code;
     public List<Person> findAll(){
@@ -42,96 +43,58 @@ public class PeopleService implements UserDetailsService {
     }
 
 
+    public void updateDate(EditInfo editInfo, BindingResult bindingResult, Jwt principal){
 
+        String username = checkJWT(principal);
 
-
-    @Transactional
-    public void updateDate(Registration registration, BindingResult bindingResult){
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Person person = personRepository.findByUsername(user.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("Username" + user.getUsername() + "not found"));
+        Person person = personRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
 
         List<FieldError> fieldErrors = bindingResult.getFieldErrors();
 
-
         if(checkValid("firstname", fieldErrors))
-            person.setFirstname(registration.getFirstname());
+            person.setFirstname(editInfo.getFirstname());
 
         if(checkValid("lastname", fieldErrors))
-            person.setLastname(registration.getLastname());
+            person.setLastname(editInfo.getLastname());
 
         if(checkValid("username", fieldErrors))
-            person.setUsername(registration.getUsername());
+            person.setUsername(editInfo.getUsername());
 
         if(checkValid("email", fieldErrors)){
-            person.setEmail(registration.getEmail());
+            person.setEmail(editInfo.getEmail());
             sendMail(person);
+        }else {
+            personRepository.save(person);
         }
 
 
     }
-    public boolean updatePassword(String password) {
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Person person = personRepository.findByUsername(user.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("Username" + user.getUsername() + "not found"));
+    public boolean updatePassword(String password, Jwt principal) {
+
+        String username = checkJWT(principal);
+
+        Person person = personRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
 
         if(password.length()<5)
             return false;
 
-        person.setPassword(passwordEncoder.encode(password));
+        person.setPwd(passwordEncoder.encode(password));
 
         personRepository.save(person);
 
         return true;
     }
-    public void sendMail(Person person){
-        code = UUID.randomUUID().toString();
 
-        String message = String.format(
-                "Hello, %s! \n" +
-                        "Please, visit next link for activate: http://localhost:8080/api/activate/%s",
-                person.getUsername(),
-                code
-        );
-        mailSender.send(person.getEmail(), "Activation code", message);
-    }
 
-    public boolean checkValid(String nameOfField, List<FieldError> fieldErrors){
-        for(FieldError fieldError : fieldErrors)
-        {
-            if(Objects.equals(nameOfField, fieldError.getField()))
-                return false;
-        }
-        return true;
-    }
-    public void save(Registration registration){
-        Person person = new Person();
-        person.setPassword(registration.getPwd());
-        person.setEmail(registration.getEmail());
-        person.setFirstname(registration.getFirstname());
-        person.setLastname(registration.getLastname());
-        person.setUsername(registration.getUsername());
-
-        sendMail(person);
-
-        person.setPassword(passwordEncoder.encode(person.getPassword()));
-        personReg=person;
+    public void deleteByUsername(Jwt principal){
+        String username = checkJWT(principal);
+        personRepository.deleteByUsername(username);
     }
 
 
 
-
-    public void deleteByUsername(){
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        personRepository.deleteByUsername(user.getUsername());
-    }
-
-    @Scheduled(initialDelay = 10)
-    public void deleteUsers(){
-        System.out.println("WORKS");
-        personRepository.deleteUsers();
-    }
-    @Transactional
     public UserDetails findUserByUsername(String username) throws UsernameNotFoundException {
         return personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
@@ -139,7 +102,6 @@ public class PeopleService implements UserDetailsService {
     }
 
     @Override
-    @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Person person = personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
@@ -150,6 +112,20 @@ public class PeopleService implements UserDetailsService {
                 .password(person.getPassword())
                 .authorities(grantedAuthorities).build();
         return user;
+    }
+
+    public void save(Registration registration){
+        Person person = new Person();
+        person.setPwd(registration.getPwd());
+        person.setEmail(registration.getEmail());
+        person.setFirstname(registration.getFirstname());
+        person.setLastname(registration.getLastname());
+        person.setUsername(registration.getUsername());
+
+        sendMail(person);
+
+        person.setPwd(passwordEncoder.encode(person.getPassword()));
+        personReg=person;
     }
 
 
@@ -163,5 +139,69 @@ public class PeopleService implements UserDetailsService {
         return false;
     }
 
+    public String checkJWT(Jwt principal){
+        String username;
+
+        if(principal != null){
+            username=principal.getClaims().get("sub").toString();
+        }
+        else {
+            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            username=user.getUsername();
+
+        }
+
+        return username;
+    }
+
+
+    public void switchLimitUsersToMessage(Jwt principal) {
+
+        String username = checkJWT(principal);
+
+        Person person = personRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
+
+        person.setMessageOnlyFriends(!person.getMessageOnlyFriends());
+
+        personRepository.save(person);
+
+
+    }
+
+    public void switchHideFriendsList(Jwt principal) {
+
+        String username = checkJWT(principal);
+
+        Person person = personRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
+
+        person.setHideFriendsList(!person.getHideFriendsList());
+
+        personRepository.save(person);
+
+
+    }
+
+    private void sendMail(Person person){
+        code = UUID.randomUUID().toString();
+
+        String message = String.format(
+                "Hello, %s! \n" +
+                        "Please, visit next link for activate: http://localhost:8080/api/activate/%s",
+                person.getUsername(),
+                code
+        );
+        mailSender.send(person.getEmail(), "Activation code", message);
+    }
+
+    private boolean checkValid(String nameOfField, List<FieldError> fieldErrors){
+        for(FieldError fieldError : fieldErrors)
+        {
+            if(Objects.equals(nameOfField, fieldError.getField()))
+                return false;
+        }
+        return true;
+    }
 
 }

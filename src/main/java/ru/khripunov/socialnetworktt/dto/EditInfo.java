@@ -2,19 +2,13 @@ package ru.khripunov.socialnetworktt.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-
 
 @Data
 @AllArgsConstructor
 
-public class Registration {
-
-    @NotBlank(message = "not empty password")
-    @Size(min=5, message = "should be longer than 5")
-    private String pwd;
+public class EditInfo {
 
     @NotBlank(message = "not empty firstname")
     private String firstname;
@@ -28,11 +22,5 @@ public class Registration {
     @NotBlank(message = "not empty email")
     @Email
     private String email;
-
-
-
-
-
-
 
 }
