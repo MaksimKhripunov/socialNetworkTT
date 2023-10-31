@@ -1,7 +1,5 @@
 package ru.khripunov.socialnetworktt.service;
 
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,8 +30,8 @@ public class ChatService {
 
         String usernameOfSender = peopleService.checkJWT(principal);
 
-        Person sender = (Person) peopleService.findUserByUsername(usernameOfSender);
-        Person recipient = (Person) peopleService.findUserByUsername(username);
+        Person sender = (Person) peopleService.loadUserByUsername(usernameOfSender);
+        Person recipient = (Person) peopleService.loadUserByUsername(username);
 
         Chat chat = chatRepository.findByCompanions(sender.getId(), recipient.getId())
                 .orElseThrow(() -> new UsernameNotFoundException("Chat not found"));
@@ -47,16 +45,16 @@ public class ChatService {
 
         String usernameOfSender = peopleService.checkJWT(principal);
 
-        Person sender = (Person) peopleService.findUserByUsername(usernameOfSender);
-        Person recipient = (Person) peopleService.findUserByUsername(username);
+        Person sender = (Person) peopleService.loadUserByUsername(usernameOfSender);
+        Person recipient = (Person) peopleService.loadUserByUsername(username);
 
         if(!recipient.getMessageOnlyFriends() || friendService.checkRelationships(sender.getId(), recipient.getId()) || Objects.equals(sender, recipient)) {
             Optional<Chat> chat;
 
             try {
                 chat = chatRepository.findByCompanions(sender.getId(), recipient.getId());
-
                 saveMessage(chat.get(), recipient, sender, content);
+
                 return chat.get();
             } catch (Exception e) {
                 Chat newChat = new Chat();

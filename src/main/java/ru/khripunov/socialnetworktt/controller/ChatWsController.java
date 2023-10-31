@@ -16,7 +16,6 @@ public class ChatWsController {
     @MessageMapping("/{id}/send")
     @SendTo(WebSocketConfig.SIMPLE_BROKER_DESTINATION + "/{id}")
     public SimpMessage processMessage(@DestinationVariable String id, SimpMessage message) {
-        System.out.println(message.getMessage());
         return message;
     }
 

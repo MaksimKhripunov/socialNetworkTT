@@ -1,4 +1,4 @@
-package ru.khripunov.socialnetworktt.Handler;
+package ru.khripunov.socialnetworktt.handler;
 
 
 import org.apache.logging.log4j.LogManager;

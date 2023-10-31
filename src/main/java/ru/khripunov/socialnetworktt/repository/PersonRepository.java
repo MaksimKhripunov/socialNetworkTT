@@ -18,6 +18,9 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     @Query(value = "select * from users u where u.username = :username", nativeQuery = true)
     Optional<Person> findByUsername(String username);
 
+    @Query(value = "select * from users u where u.email = :email", nativeQuery = true)
+    Optional<Person> findByEmail(String email);
+
     @Transactional
     @Query(value = "update users u set delete_time=now()+'31d' where u.username = :username", nativeQuery = true)
     @Modifying

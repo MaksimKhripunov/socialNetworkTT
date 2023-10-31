@@ -14,6 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,8 +33,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 import ru.khripunov.socialnetworktt.dto.Login;
+import ru.khripunov.socialnetworktt.dto.PersonForm;
 import ru.khripunov.socialnetworktt.model.Person;
-import ru.khripunov.socialnetworktt.dto.Registration;
 import ru.khripunov.socialnetworktt.service.PeopleService;
 import ru.khripunov.socialnetworktt.service.TokenService;
 
@@ -46,13 +49,10 @@ import java.util.stream.Collectors;
 @DependsOn("securityFilterChain")
 @Tag(name = "Authentication/Registration", description = "The Authentication/Registration API.")
 public class AuthController {
-
-
     private final PeopleService peopleService;
     private final TokenService tokenService;
+    private final AuthenticationManager authenticationManager;
     private final RememberMeServices rememberMeServices;
-
-    private final JwtEncoder encoder;
 
     @Operation(summary = "Confirm Code", description = "Confirm code to registration.")
     @GetMapping("/activate/{code}")
@@ -65,20 +65,13 @@ public class AuthController {
 
     @Operation(summary = "User Registration", description = "Registration the user.")
     @PostMapping( "/register")
-    public ResponseEntity<?> addUser(@Valid @RequestBody Registration registration, BindingResult bindingResult){
-        for(FieldError fieldError : bindingResult.getFieldErrors())
-            System.out.println(fieldError.getField());
+    public ResponseEntity<?> addUser(@Valid @RequestBody PersonForm personForm, BindingResult bindingResult){
+
         if(bindingResult.hasErrors()){
             return new ResponseEntity<>("Invalid data", HttpStatus.BAD_REQUEST);
-        }else{
-            try{
-                peopleService.loadUserByUsername(registration.getUsername());
-                return new ResponseEntity<>("Invalid data", HttpStatus.BAD_REQUEST);
-            }catch (UsernameNotFoundException e){
-                    peopleService.save(registration);
-            }
-            return new ResponseEntity<>(HttpStatus.OK);
         }
+
+        return peopleService.checkUserUniqueParameters(personForm);
 
     }
 
@@ -87,34 +80,22 @@ public class AuthController {
     public ResponseEntity<?> entryUser(@RequestBody Login login, HttpServletRequest request, HttpServletResponse response){
 
         if (request.getUserPrincipal() != null) {
-            throw new RuntimeException("Please logout first.");
+            return new ResponseEntity<>("Logout first", HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPwd()));
+        } catch (BadCredentialsException e) {
+            return new ResponseEntity<>("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
 
         try{
             request.login(login.getUsername(), login.getPwd());
         } catch (ServletException e) {
-            throw new RuntimeException("Invalid username/email or password");
+            return new ResponseEntity<>("Invalid username or password", HttpStatus.BAD_REQUEST);
         }
 
-        Authentication auth=(Authentication) request.getUserPrincipal();
-
-        User user=(User) auth.getPrincipal();
-
-        Person person = (Person) peopleService.findUserByUsername(user.getUsername());
-
-        person.setDeleteTime(null);
-
-
-
-        String token = generateToken(user);
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.set("X-AUTH-TOKEN", token);
-
-
-        log.info("User {} logged in.", user.getUsername());
-        rememberMeServices.loginSuccess(request, response, auth);
-
-        return ResponseEntity.ok().headers(httpHeaders).contentType(MediaType.APPLICATION_JSON).body("{\"token\":\"" + token + "\"}");
+        return peopleService.loginUser(request, response, rememberMeServices);
 
     }
 
@@ -129,22 +110,5 @@ public class AuthController {
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
-
-    private String generateToken(UserDetails userDetails) {
-        Instant now = Instant.now();
-        long expiry = 36000L;
-        String scope = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(" "));
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("self")
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(expiry))
-                .subject(userDetails.getUsername())
-                .claim("scope", scope)
-                .build();
-        return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-    }
-
 
 }

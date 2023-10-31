@@ -20,8 +20,8 @@ public class FriendService {
     public void sendInvite(String recipient, Jwt principal) {
         String username = peopleService.checkJWT(principal);
         Friend friend = new Friend();
-        Person person = (Person) peopleService.findUserByUsername(username);
-        Person rec = (Person) peopleService.findUserByUsername(recipient);
+        Person person = (Person) peopleService.loadUserByUsername(username);
+        Person rec = (Person) peopleService.loadUserByUsername(recipient);
         friend.setPersonId(person.getId());
         friend.setFriendId(rec.getId());
 
@@ -34,14 +34,14 @@ public class FriendService {
 
     public List<String> listOfFriends(Jwt principal) {
         String username = peopleService.checkJWT(principal);
-        Person person = (Person) peopleService.findUserByUsername(username);
+        Person person = (Person) peopleService.loadUserByUsername(username);
 
         return friendsList(person.getUsername());
 
     }
 
     public List<String> listOfFriends(String username) {
-        Person person = (Person) peopleService.findUserByUsername(username);
+        Person person = (Person) peopleService.loadUserByUsername(username);
         if(person.getHideFriendsList())
             return new ArrayList<>();
         return friendsList(username);
@@ -55,7 +55,7 @@ public class FriendService {
     }
 
     private List<String> friendsList(String username){
-        Person person = (Person) peopleService.findUserByUsername(username);
+        Person person = (Person) peopleService.loadUserByUsername(username);
         List<Long> friends = friendRepository.findAllFriends(person.getId());
 
         List<String> usernameOfFriends =new ArrayList<>();

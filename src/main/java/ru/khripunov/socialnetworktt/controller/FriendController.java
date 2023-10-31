@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import ru.khripunov.socialnetworktt.Exception.MyException;
+import ru.khripunov.socialnetworktt.exception.MyException;
 import ru.khripunov.socialnetworktt.service.FriendService;
 import ru.khripunov.socialnetworktt.service.TokenService;
 
@@ -38,6 +38,7 @@ public class FriendController {
     @Operation(summary = "List Of All My Friends", description = "List of all my friends.")
     public List<String> allFriends(@AuthenticationPrincipal Jwt principal) throws MyException {
         if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
+            System.out.println(principal);
             return friendService.listOfFriends(principal);
         }
         throw new MyException("Invalid Token");

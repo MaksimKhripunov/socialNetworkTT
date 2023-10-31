@@ -24,8 +24,8 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 
-import ru.khripunov.socialnetworktt.Exception.MyException;
-import ru.khripunov.socialnetworktt.Handler.MyStompSessionHandler;
+import ru.khripunov.socialnetworktt.exception.MyException;
+import ru.khripunov.socialnetworktt.handler.MyStompSessionHandler;
 import ru.khripunov.socialnetworktt.configuration.WebSocketConfig;
 import ru.khripunov.socialnetworktt.dto.SimpMessage;
 import ru.khripunov.socialnetworktt.model.Chat;
@@ -59,6 +59,7 @@ public class ChatController {
     public ResponseEntity<?> sendMessage(@PathVariable String username, @RequestBody String message, @AuthenticationPrincipal Jwt principal) throws ExecutionException, InterruptedException, TimeoutException {
 
         if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
+
             Chat chat = chatService.checkChat(username, message, principal);
 
             String key = peopleService.checkJWT(principal) + username;

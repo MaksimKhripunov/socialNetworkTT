@@ -19,21 +19,14 @@ public class Person implements UserDetails {
     private Long id;
 
     @Column(name="pwd")
-    @NotBlank(message = "not empty password")
-    @Size(min=5, message = "should be longer than 5")
     private String pwd;
     @Column(name="firstname")
-    @NotBlank(message = "not empty firstname")
     private String firstname;
     @Column(name="lastname")
-    @NotBlank(message = "not empty lastname")
     private String lastname;
     @Column(name="username")
-    @NotBlank(message = "not empty username")
     private String username;
     @Column(name="email")
-    @NotBlank(message = "not empty email")
-    @Email
     private String email;
 
     @Column(name = "delete_time")

@@ -1,4 +1,4 @@
-package ru.khripunov.socialnetworktt.Exception;
+package ru.khripunov.socialnetworktt.exception;
 
 
 public class MyException extends Exception{
