@@ -10,7 +10,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class PersonForm {
+public class PersonDTO {
 
     @NotBlank(message = "not empty password")
     @NotNull(message = "not empty password")

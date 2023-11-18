@@ -1,4 +1,4 @@
-package ru.khripunov.socialnetworktt.service;
+package ru.khripunov.socialnetworktt.service.ChatService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -8,6 +8,9 @@ import ru.khripunov.socialnetworktt.model.Chat;
 import ru.khripunov.socialnetworktt.model.Message;
 import ru.khripunov.socialnetworktt.model.Person;
 import ru.khripunov.socialnetworktt.repository.ChatRepository;
+import ru.khripunov.socialnetworktt.service.FriendService.FriendServiceImpl;
+import ru.khripunov.socialnetworktt.service.MessageService.MessageServiceImpl;
+import ru.khripunov.socialnetworktt.service.PeopleService.PeopleServiceImpl;
 
 
 import java.util.*;
@@ -15,23 +18,21 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-public class ChatService {
+public class ChatServiceImpl implements ChatService {
 
     private final ChatRepository chatRepository;
 
-    private final MessageService messageService;
-    private final PeopleService peopleService;
+    private final MessageServiceImpl messageServiceImpl;
+    private final PeopleServiceImpl peopleServiceImpl;
 
-    private final FriendService friendService;
+    private final FriendServiceImpl friendServiceImpl;
 
 
-
+    @Override
     public List<Message> findByUsername(String username, Jwt principal){
 
-        String usernameOfSender = peopleService.checkJWT(principal);
-
-        Person sender = (Person) peopleService.loadUserByUsername(usernameOfSender);
-        Person recipient = (Person) peopleService.loadUserByUsername(username);
+        Person sender = (Person) peopleServiceImpl.loadUserByUsername(principal.getSubject());
+        Person recipient = (Person) peopleServiceImpl.loadUserByUsername(username);
 
         Chat chat = chatRepository.findByCompanions(sender.getId(), recipient.getId())
                 .orElseThrow(() -> new UsernameNotFoundException("Chat not found"));
@@ -41,14 +42,14 @@ public class ChatService {
 
     }
 
+    @Override
     public Chat checkChat(String username, String content, Jwt principal) {
 
-        String usernameOfSender = peopleService.checkJWT(principal);
 
-        Person sender = (Person) peopleService.loadUserByUsername(usernameOfSender);
-        Person recipient = (Person) peopleService.loadUserByUsername(username);
+        Person sender = (Person) peopleServiceImpl.loadUserByUsername(principal.getSubject());
+        Person recipient = (Person) peopleServiceImpl.loadUserByUsername(username);
 
-        if(!recipient.getMessageOnlyFriends() || friendService.checkRelationships(sender.getId(), recipient.getId()) || Objects.equals(sender, recipient)) {
+        if(!recipient.getMessageOnlyFriends() || friendServiceImpl.checkRelationships(sender.getId(), recipient.getId()) || Objects.equals(sender, recipient)) {
             Optional<Chat> chat;
 
             try {
@@ -70,21 +71,7 @@ public class ChatService {
         return null;
     }
 
-    private void saveMessage(Chat chat, Person recipient, Person sender, String content){
-        Message message = new Message();
-        message.setRecipientId(recipient.getId());
-        message.setSenderId(sender.getId());
-        message.setRecipientName(recipient.getUsername());
-        message.setSenderName(sender.getUsername());
-        message.setContent(content);
-        message.setTimeOfReceipt(new Date());
-        if (chat.getMessagesList() == null){
-            chat.setMessagesList(new ArrayList<>());
-        }
-        chat.addMessage(message);
-        messageService.save(message);
-    }
-
+    @Override
     public ArrayList<ArrayList<String>> checkHistoryOfChat(String username, Jwt principal) {
         ArrayList<ArrayList<String>> chat = new ArrayList<>();
 
@@ -97,5 +84,23 @@ public class ChatService {
         }
         return chat;
     }
+
+
+    private void saveMessage(Chat chat, Person recipient, Person sender, String content){
+        Message message = new Message();
+        message.setRecipientId(recipient.getId());
+        message.setSenderId(sender.getId());
+        message.setRecipientName(recipient.getUsername());
+        message.setSenderName(sender.getUsername());
+        message.setContent(content);
+        message.setTimeOfReceipt(new Date());
+        if (chat.getMessagesList() == null){
+            chat.setMessagesList(new ArrayList<>());
+        }
+        chat.addMessage(message);
+        messageServiceImpl.save(message);
+    }
+
+
 
 }

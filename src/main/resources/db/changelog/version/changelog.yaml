@@ -1,0 +1,159 @@
+databaseChangeLog:
+  - changeSet:
+      id: DEV-1
+      author: maks
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: _user_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: _email_unique
+              - column:
+                  name: username
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: _username_unique
+              - column:
+                  name: firstname
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lastname
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pwd
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: delete_time
+                  type: TIMESTAMP(6)
+                  defaultValue: 'NULL'
+              - column:
+                  name: message_only_friends
+                  type: BOOLEAN
+                  defaultValue: 'FALSE'
+              - column:
+                  name: hide_friends_list
+                  type: BOOLEAN
+                  defaultValue: 'FALSE'
+            tableName: users
+  - changeSet:
+      id: DEV-2
+      author: maks
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: _message_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: recipient_id
+                  type: BIGINT
+              - column:
+                  name: sender_id
+                  type: BIGINT
+              - column:
+                  name: recipient_name
+                  type: VARCHAR(255)
+              - column:
+                  name: sender_name
+                  type: VARCHAR(255)
+              - column:
+                  name: content
+                  type: VARCHAR(255)
+              - column:
+                  name: time_of_receipt
+                  type: TIMESTAMP(6)
+                  defaultValue: 'NULL'
+            tableName: messages
+  - changeSet:
+      id: DEV-3
+      author: maks
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: _invalid_token_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: token
+                  type: VARCHAR(255)
+              - column:
+                  name: remove_time
+                  type: TIMESTAMP(6)
+            tableName: invalid_tokens
+  - changeSet:
+      id: DEV-4
+      author: maks
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: _friend_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: person_id
+                  type: BIGINT
+              - column:
+                  name: friend_id
+                  type: BIGINT
+            tableName: friends
+  - changeSet:
+      id: DEV-5
+      author: maks
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: _chat_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: first_companion
+                  type: BIGINT
+              - column:
+                  name: second_companion
+                  type: BIGINT
+            tableName: chats

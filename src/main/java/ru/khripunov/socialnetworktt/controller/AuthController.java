@@ -9,37 +9,22 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.DependsOn;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
-import ru.khripunov.socialnetworktt.dto.Login;
-import ru.khripunov.socialnetworktt.dto.PersonForm;
-import ru.khripunov.socialnetworktt.model.Person;
-import ru.khripunov.socialnetworktt.service.PeopleService;
-import ru.khripunov.socialnetworktt.service.TokenService;
-
-import java.time.Instant;
-import java.util.stream.Collectors;
+import ru.khripunov.socialnetworktt.dto.LoginRequest;
+import ru.khripunov.socialnetworktt.dto.PersonDTO;
+import ru.khripunov.socialnetworktt.service.PeopleService.PeopleServiceImpl;
+import ru.khripunov.socialnetworktt.service.TokenService.TokenServiceImpl;
 
 
 @Slf4j
@@ -49,15 +34,15 @@ import java.util.stream.Collectors;
 @DependsOn("securityFilterChain")
 @Tag(name = "Authentication/Registration", description = "The Authentication/Registration API.")
 public class AuthController {
-    private final PeopleService peopleService;
-    private final TokenService tokenService;
+    private final PeopleServiceImpl peopleServiceImpl;
+    private final TokenServiceImpl tokenServiceImpl;
     private final AuthenticationManager authenticationManager;
     private final RememberMeServices rememberMeServices;
 
     @Operation(summary = "Confirm Code", description = "Confirm code to registration.")
     @GetMapping("/activate/{code}")
     public ResponseEntity<?> activate(@PathVariable String code){
-        if(peopleService.activatePerson(code)) {
+        if(peopleServiceImpl.activatePerson(code)) {
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>("Invalid code", HttpStatus.BAD_REQUEST);
@@ -65,37 +50,37 @@ public class AuthController {
 
     @Operation(summary = "User Registration", description = "Registration the user.")
     @PostMapping( "/register")
-    public ResponseEntity<?> addUser(@Valid @RequestBody PersonForm personForm, BindingResult bindingResult){
+    public ResponseEntity<?> addUser(@Valid @RequestBody PersonDTO personDTO, BindingResult bindingResult){
 
         if(bindingResult.hasErrors()){
             return new ResponseEntity<>("Invalid data", HttpStatus.BAD_REQUEST);
         }
 
-        return peopleService.checkUserUniqueParameters(personForm);
+        return peopleServiceImpl.checkUserUniqueParameters(personDTO);
 
     }
 
     @Operation(summary = "User Authentication", description = "Authenticate the user and return a JWT token if the user is valid.")
     @PostMapping( "/login")
-    public ResponseEntity<?> entryUser(@RequestBody Login login, HttpServletRequest request, HttpServletResponse response){
+    public ResponseEntity<?> entryUser(@RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response){
 
         if (request.getUserPrincipal() != null) {
             return new ResponseEntity<>("Logout first", HttpStatus.BAD_REQUEST);
         }
 
         try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPwd()));
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPwd()));
         } catch (BadCredentialsException e) {
             return new ResponseEntity<>("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
 
         try{
-            request.login(login.getUsername(), login.getPwd());
+            request.login(loginRequest.getUsername(), loginRequest.getPwd());
         } catch (ServletException e) {
             return new ResponseEntity<>("Invalid username or password", HttpStatus.BAD_REQUEST);
         }
 
-        return peopleService.loginUser(request, response, rememberMeServices);
+        return peopleServiceImpl.loginUser(request, response, rememberMeServices);
 
     }
 
@@ -104,7 +89,7 @@ public class AuthController {
     public ResponseEntity<?> logout(HttpServletRequest request, @AuthenticationPrincipal Jwt principal) throws ServletException {
 
         if (principal!=null){
-            tokenService.save(principal.getTokenValue(), principal.getClaims().get("exp").toString());
+            tokenServiceImpl.save(principal.getTokenValue(), principal.getClaims().get("exp").toString());
         }
         request.logout();
 

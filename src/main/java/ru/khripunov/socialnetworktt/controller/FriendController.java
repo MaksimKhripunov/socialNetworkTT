@@ -10,8 +10,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import ru.khripunov.socialnetworktt.exception.MyException;
-import ru.khripunov.socialnetworktt.service.FriendService;
-import ru.khripunov.socialnetworktt.service.TokenService;
+import ru.khripunov.socialnetworktt.service.FriendService.FriendServiceImpl;
+import ru.khripunov.socialnetworktt.service.TokenService.TokenServiceImpl;
 
 import java.util.List;
 
@@ -21,14 +21,14 @@ import java.util.List;
 @Tag(name = "Friend", description = "The Friend API.")
 public class FriendController {
 
-    private final FriendService friendService;
-    private final TokenService tokenService;
+    private final FriendServiceImpl friendServiceImpl;
+    private final TokenServiceImpl tokenServiceImpl;
 
     @GetMapping("/friends/add/{username}")
     @Operation(summary = "Add Friend", description = "Add Friend {username}.")
     public ResponseEntity<?> addFriend(@PathVariable String username, @AuthenticationPrincipal Jwt principal){
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            friendService.sendInvite(username, principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            friendServiceImpl.sendInvite(username, principal);
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -37,9 +37,9 @@ public class FriendController {
     @GetMapping(value = "/friends", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "List Of All My Friends", description = "List of all my friends.")
     public List<String> allFriends(@AuthenticationPrincipal Jwt principal) throws MyException {
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
             System.out.println(principal);
-            return friendService.listOfFriends(principal);
+            return friendServiceImpl.listOfFriends(principal);
         }
         throw new MyException("Invalid Token");
     }
@@ -47,8 +47,8 @@ public class FriendController {
     @GetMapping(value = "/{username}/friends", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "List Of All Friends", description = "List of all {username}'s friends.")
     public List<String> allFriendsOfAnotherUser(@PathVariable String username, @AuthenticationPrincipal Jwt principal) throws MyException {
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            return friendService.listOfFriends(username);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            return friendServiceImpl.listOfFriends(username);
         }
         throw new MyException("Invalid Token");
     }

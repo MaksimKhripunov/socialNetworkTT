@@ -1,4 +1,4 @@
-package ru.khripunov.socialnetworktt.service;
+package ru.khripunov.socialnetworktt.service.PeopleService;
 
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,12 +22,13 @@ import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
-import ru.khripunov.socialnetworktt.dto.EditInfo;
-import ru.khripunov.socialnetworktt.dto.PersonForm;
+import ru.khripunov.socialnetworktt.dto.EditProfileRequest;
+import ru.khripunov.socialnetworktt.dto.PersonDTO;
 
 import ru.khripunov.socialnetworktt.repository.PersonRepository;
 import ru.khripunov.socialnetworktt.model.Person;
-import ru.khripunov.socialnetworktt.util.JwtTokenUtils;
+import ru.khripunov.socialnetworktt.service.MessageService.MailSender;
+
 
 import java.time.Instant;
 import java.util.*;
@@ -36,27 +37,28 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PeopleService implements UserDetailsService {
+public class PeopleServiceImpl implements UserDetailsService, PeopleService {
 
     private final PersonRepository personRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailSender mailSender;
 
-    private final JwtTokenUtils jwtTokenUtils;
+    private final JwtEncoder encoder;
+
     private Person personReg=null;
     private String code;
-    public List<Person> findAll(){
-        return personRepository.findAll();
-    }
 
+
+    @Override
     public Optional<Person> findById(Long id){
         return personRepository.findById(id);
     }
 
 
-    public void updateDate(EditInfo editInfo, BindingResult bindingResult, Jwt principal){
+    @Override
+    public void updateDate(EditProfileRequest editProfileRequest, BindingResult bindingResult, Jwt principal){
 
-        String username = checkJWT(principal);
+        String username = principal.getSubject();
 
         Person person = personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
@@ -64,16 +66,16 @@ public class PeopleService implements UserDetailsService {
         List<FieldError> fieldErrors = bindingResult.getFieldErrors();
 
         if(checkValid("firstname", fieldErrors))
-            person.setFirstname(editInfo.getFirstname());
+            person.setFirstname(editProfileRequest.getFirstname());
 
         if(checkValid("lastname", fieldErrors))
-            person.setLastname(editInfo.getLastname());
+            person.setLastname(editProfileRequest.getLastname());
 
         if(checkValid("username", fieldErrors))
-            person.setUsername(editInfo.getUsername());
+            person.setUsername(editProfileRequest.getUsername());
 
         if(checkValid("email", fieldErrors)){
-            person.setEmail(editInfo.getEmail());
+            person.setEmail(editProfileRequest.getEmail());
             sendMail(person);
         }else {
             personRepository.save(person);
@@ -81,29 +83,32 @@ public class PeopleService implements UserDetailsService {
 
 
     }
-    public boolean updatePassword(String password, Jwt principal) {
+    @Override
+    public void updatePassword(String password, Jwt principal) {
 
-        String username = checkJWT(principal);
+        String username = principal.getSubject();
 
         Person person = personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
 
         if(password.length()<5)
-            return false;
+            return;
 
         person.setPwd(passwordEncoder.encode(password));
 
         personRepository.save(person);
 
-        return true;
+
     }
 
 
+    @Override
     public void deleteByUsername(Jwt principal){
-        String username = checkJWT(principal);
+        String username = principal.getSubject();
         personRepository.deleteByUsername(username);
     }
 
+    @Override
     public Optional<Person> loadUserByEmail(String email) throws UsernameNotFoundException {
         return personRepository.findByEmail(email);
     }
@@ -115,15 +120,14 @@ public class PeopleService implements UserDetailsService {
 
     }
 
-
-
-    public void save(PersonForm personForm){
+    @Override
+    public void save(PersonDTO personDTO){
         Person person = new Person();
-        person.setPwd(personForm.getPwd());
-        person.setEmail(personForm.getEmail());
-        person.setFirstname(personForm.getFirstname());
-        person.setLastname(personForm.getLastname());
-        person.setUsername(personForm.getUsername());
+        person.setPwd(personDTO.getPwd());
+        person.setEmail(personDTO.getEmail());
+        person.setFirstname(personDTO.getFirstname());
+        person.setLastname(personDTO.getLastname());
+        person.setUsername(personDTO.getUsername());
 
         sendMail(person);
 
@@ -131,7 +135,7 @@ public class PeopleService implements UserDetailsService {
         personReg=person;
     }
 
-
+    @Override
     public boolean activatePerson(String code) {
         if(personReg!=null && Objects.equals(this.code, code)){
             personRepository.save(personReg);
@@ -142,26 +146,11 @@ public class PeopleService implements UserDetailsService {
         return false;
     }
 
-    public String checkJWT(Jwt principal){
-        String username;
 
-        if(principal != null){
-            username=principal.getClaims().get("sub").toString();
-            System.out.println(principal);
-        }
-        else {
-            Person user = (Person) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            username=user.getUsername();
-
-        }
-
-        return username;
-    }
-
-
+    @Override
     public void switchLimitUsersToMessage(Jwt principal) {
 
-        String username = checkJWT(principal);
+        String username = principal.getSubject();
 
         Person person = personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
@@ -173,9 +162,10 @@ public class PeopleService implements UserDetailsService {
 
     }
 
+    @Override
     public void switchHideFriendsList(Jwt principal) {
 
-        String username = checkJWT(principal);
+        String username = principal.getSubject();
 
         Person person = personRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username" + username + "not found"));
@@ -187,26 +177,28 @@ public class PeopleService implements UserDetailsService {
 
     }
 
-    public ResponseEntity<?> checkUserUniqueParameters(PersonForm personForm) {
+    @Override
+    public ResponseEntity<?> checkUserUniqueParameters(PersonDTO personDTO) {
         try {
-            loadUserByUsername(personForm.getUsername());
+            loadUserByUsername(personDTO.getUsername());
             return new ResponseEntity<>("Username already registered", HttpStatus.BAD_REQUEST);
         }catch (UsernameNotFoundException e){
-            if (loadUserByEmail(personForm.getEmail()).isPresent()){
+            if (loadUserByEmail(personDTO.getEmail()).isPresent()){
                 return new ResponseEntity<>("Email already registered", HttpStatus.BAD_REQUEST);
             }
         }
-        save(personForm);
+        save(personDTO);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @Override
     public ResponseEntity<?> loginUser(HttpServletRequest request, HttpServletResponse response, RememberMeServices rememberMeServices) {
         Authentication auth=(Authentication) request.getUserPrincipal();
         Person user = (Person) auth.getPrincipal();
         Person person = (Person) loadUserByUsername(user.getUsername());
         person.setDeleteTime(null);
 
-        String token = jwtTokenUtils.generateRefreshToken(user);
+        String token = generateToken(user);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set("X-AUTH-TOKEN", token);
 
@@ -237,5 +229,38 @@ public class PeopleService implements UserDetailsService {
         return true;
     }
 
+    private String generateToken(UserDetails userDetails) {
+        Instant now = Instant.now();
+        long expiry = 36000L;
+        String scope = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(" "));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer("self")
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(expiry))
+                .subject(userDetails.getUsername())
+                .claim("scope", scope)
+                .build();
+        return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+    }
+
+
+    /* @Override
+    public String checkJWT(Jwt principal){
+        String username;
+
+        if(principal != null){
+            username=principal.getClaims().get("sub").toString();
+            System.out.println(principal);
+        }
+        else {
+            Person user = (Person) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            username=user.getUsername();
+
+        }
+
+        return username;
+    }*/
 
 }

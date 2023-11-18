@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 
-public class EditInfo {
+public class EditProfileRequest {
 
     @NotBlank(message = "not empty firstname")
     private String firstname;

@@ -1,4 +1,4 @@
-package ru.khripunov.socialnetworktt.service;
+package ru.khripunov.socialnetworktt.service.MessageService;
 
 import lombok.RequiredArgsConstructor;
 

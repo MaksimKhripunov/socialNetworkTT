@@ -51,6 +51,23 @@
             <type>pom</type>
         </dependency>
 
+        <!--LIQUIBASE-->
+        <!-- https://mvnrepository.com/artifact/org.liquibase/liquibase-core -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+        <!--LIQUIBASE-->
+
+        <!--Docker compose-->
+       <!-- <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-docker-compose</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        -->
+        <!--Docker compose-->
 
         <!-- Tests -->
         <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter -->

@@ -29,9 +29,9 @@ import ru.khripunov.socialnetworktt.handler.MyStompSessionHandler;
 import ru.khripunov.socialnetworktt.configuration.WebSocketConfig;
 import ru.khripunov.socialnetworktt.dto.SimpMessage;
 import ru.khripunov.socialnetworktt.model.Chat;
-import ru.khripunov.socialnetworktt.service.ChatService;
-import ru.khripunov.socialnetworktt.service.PeopleService;
-import ru.khripunov.socialnetworktt.service.TokenService;
+import ru.khripunov.socialnetworktt.service.ChatService.ChatServiceImpl;
+import ru.khripunov.socialnetworktt.service.PeopleService.PeopleServiceImpl;
+import ru.khripunov.socialnetworktt.service.TokenService.TokenServiceImpl;
 
 
 
@@ -48,9 +48,9 @@ import java.util.concurrent.TimeoutException;
 @Tag(name = "Chat", description = "The Chat API.")
 public class ChatController {
 
-    private final ChatService chatService;
-    private final PeopleService peopleService;
-    private final TokenService tokenService;
+    private final ChatServiceImpl chatServiceImpl;
+    private final PeopleServiceImpl peopleServiceImpl;
+    private final TokenServiceImpl tokenServiceImpl;
 
     private final HashMap<String, StompSession> sessions = new HashMap<>();
 
@@ -58,11 +58,11 @@ public class ChatController {
     @Operation(summary = "Send Message", description = "Send message to {username}.")
     public ResponseEntity<?> sendMessage(@PathVariable String username, @RequestBody String message, @AuthenticationPrincipal Jwt principal) throws ExecutionException, InterruptedException, TimeoutException {
 
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
 
-            Chat chat = chatService.checkChat(username, message, principal);
+            Chat chat = chatServiceImpl.checkChat(username, message, principal);
 
-            String key = peopleService.checkJWT(principal) + username;
+            String key = principal.getSubject() + username;
 
             if (!sessions.containsKey(key)) {
 
@@ -92,8 +92,8 @@ public class ChatController {
     @GetMapping(value = "/chats/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Check History Of Chat", description = "Check history of chat with {username}.")
     public ArrayList<ArrayList<String>> checkHistoryOfChat(@PathVariable String username, @AuthenticationPrincipal Jwt principal) throws MyException {
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            return chatService.checkHistoryOfChat(username, principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            return chatServiceImpl.checkHistoryOfChat(username, principal);
         }
         throw new MyException("Invalid Token");
 

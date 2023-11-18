@@ -54,7 +54,7 @@ public class SecurityConfig {
     RSAPrivateKey privateKey;
 
     private final ConfigurableBeanFactory beanFactory;
-    private final JwtRequestFilter jwtRequestFilter;
+
 
 
     @Bean
@@ -78,12 +78,11 @@ public class SecurityConfig {
                         .requestMatchers("/**").authenticated()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                /*.oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))*/
-                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
+                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
                 .exceptionHandling(customizer -> customizer
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                       /* .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
-                        .accessDeniedHandler(new BearerTokenAccessDeniedHandler()))*/
+                        /*.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))*/
+                        .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(new BearerTokenAccessDeniedHandler()))
                 .rememberMe(customizer -> customizer.alwaysRemember(true).key("social_network"))
                 .build();
 

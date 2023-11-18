@@ -13,10 +13,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import ru.khripunov.socialnetworktt.dto.EditInfo;
+import ru.khripunov.socialnetworktt.dto.EditProfileRequest;
 
-import ru.khripunov.socialnetworktt.service.PeopleService;
-import ru.khripunov.socialnetworktt.service.TokenService;
+import ru.khripunov.socialnetworktt.service.PeopleService.PeopleServiceImpl;
+import ru.khripunov.socialnetworktt.service.TokenService.TokenServiceImpl;
 
 
 @RestController
@@ -25,16 +25,16 @@ import ru.khripunov.socialnetworktt.service.TokenService;
 @Tag(name = "Update Info", description = "The Update Info API.")
 public class UpdateDataController {
 
-    private final PeopleService peopleService;
+    private final PeopleServiceImpl peopleServiceImpl;
 
-    private final TokenService tokenService;
+    private final TokenServiceImpl tokenServiceImpl;
 
     @PatchMapping("/edit")
     @Operation(summary = "Edit Info", description = "Edit username, email, lastname, firstname")
-    public ResponseEntity<?> changeInfo(@Valid @RequestBody EditInfo editInfo, BindingResult bindingResult, @AuthenticationPrincipal Jwt principal){
+    public ResponseEntity<?> changeInfo(@Valid @RequestBody EditProfileRequest editProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal Jwt principal){
 
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            peopleService.updateDate(editInfo, bindingResult, principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            peopleServiceImpl.updateDate(editProfileRequest, bindingResult, principal);
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -44,8 +44,8 @@ public class UpdateDataController {
     @Operation(summary = "Change Password", description = "Change password")
     public ResponseEntity<?> changePassword(@RequestParam String password, @AuthenticationPrincipal Jwt principal){
 
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            peopleService.updatePassword(password, principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            peopleServiceImpl.updatePassword(password, principal);
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -54,11 +54,9 @@ public class UpdateDataController {
     @PatchMapping("/edit/delete")
     @Operation(summary = "Remove Account", description = "Remove account")
     public ResponseEntity<?> deleteUser(HttpServletRequest request, @AuthenticationPrincipal Jwt principal) throws ServletException {
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            peopleService.deleteByUsername(principal);
-            if (principal!=null){
-                tokenService.save(principal.getTokenValue(), principal.getClaims().get("exp").toString());
-            }
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            peopleServiceImpl.deleteByUsername(principal);
+            tokenServiceImpl.save(principal.getTokenValue(), principal.getClaims().get("exp").toString());
             request.logout();
             return new ResponseEntity<>(HttpStatus.OK);
         }
@@ -68,8 +66,8 @@ public class UpdateDataController {
     @PatchMapping("/edit/onlyFriends")
     @Operation(summary = "Switch Limit Users To Message", description = "Switch limit users to message")
     public ResponseEntity<?> switchLimitUsersToMessage(@AuthenticationPrincipal Jwt principal){
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            peopleService.switchLimitUsersToMessage(principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            peopleServiceImpl.switchLimitUsersToMessage(principal);
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -78,8 +76,8 @@ public class UpdateDataController {
     @PatchMapping("/edit/friendsList")
     @Operation(summary = "Switch Hide Friends List", description = "Switch hide friends list")
     public ResponseEntity<?> switchHideFriendsList(@AuthenticationPrincipal Jwt principal){
-        if(principal==null || tokenService.checkCorrectJwt(principal.getTokenValue())) {
-            peopleService.switchHideFriendsList(principal);
+        if(principal!=null && tokenServiceImpl.checkCorrectJwt(principal.getTokenValue())) {
+            peopleServiceImpl.switchHideFriendsList(principal);
             return new ResponseEntity<>(HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
