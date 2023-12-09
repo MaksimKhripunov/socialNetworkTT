@@ -74,7 +74,7 @@ spring.mail.port
 spring.mail.protocol
 
 # Запуск
-Склонировать репозиторий, выполнив команду: git clone https://github.com/lofominhili/TrendChat.git
+Склонировать репозиторий, выполнив команду: 
 
 Добавить environment переменные в сервисе app файла docker-compose.yaml.
 
